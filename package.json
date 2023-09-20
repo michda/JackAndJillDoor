@@ -1,0 +1,13 @@
+{
+  "name": "JackAndJillDoor",
+  "version": "1.0.0",
+  "description": "A Raspberry pi project to handle a basic access control system for a 2 door bathroom",
+  "main": "index.js",
+  "license": "unlicense",
+  "dependencies": {
+    "express": "^4.18.2",
+    "onoff": "^6.0.3",
+    "socket.io": "^4.4.1",
+    "supervisor": "^0.12.0"
+  }
+}
