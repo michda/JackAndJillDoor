@@ -5,8 +5,8 @@ const express = require('express'); //require express as adding a REST override 
 var pushButton1 = new Gpio(17, 'in', 'both', { debounceTimeout: 20 }); //use GPIO pin 17 as input
 var pushButton2 = new Gpio(18, 'in', 'both', { debounceTimeout: 20 }); //use GPIO pin 18 as input
 var LEDPin = new Gpio(4, 'out'); //declare GPIO4 an output
-var DOORPin1 = new Gpio(20, 'out'); //declare GPIO4 an output
-var DOORPin2 = new Gpio(21, 'out'); //declare GPIO4 an output
+var DOORPin1 = new Gpio(20, 'out'); //declare GPIO20 an output
+var DOORPin2 = new Gpio(21, 'out'); //declare GPIO21 an output
 var overrideButton = false;
 
 
@@ -19,7 +19,7 @@ app.listen(PORT, () => {
 });
 
 function getDoorStatus(doorPin) {
-    stat = DOORPin.readSync();
+    stat = doorPin.readSync();
     if (stat === 0) {
         statusString = "Locked";
     } else {
@@ -46,12 +46,21 @@ const unlockRoute = function (request, response, next) {
     next();
 };
 
+const isolateRoute = function (request, response, next) {
+    console.log("isolating door " + request.params.door);
+    //TODO
+    next();
+}
+
 app.get("/status", [statusRoute]);
 
 app.get("/unlock", [unlockRoute, statusRoute]);
 
+app.get("/isolate/:door", [isolateRoute, statusRoute]);
+
 var state = 0;
-pushButton.watch(function (err, value) { //Watch for hardware interrupts on pushButton GPIO, specify callback function
+
+const buttonWatch = function (err, valule, button) {
     console.log("in:" + value + "," + state);
     if (overrideButton) {
         if (value === 1) {
@@ -67,10 +76,13 @@ pushButton.watch(function (err, value) { //Watch for hardware interrupts on push
         // state = value;
         LEDPin.writeSync(state);
         DOORPin1.writeSync(state);
+        DOORPin2.writeSync(state);
     }
     console.log("out:" + value + "," + state);
     console.log("end");
-});
+}
+pushButton1.watch(function (err, value) { buttonWatch(err, value, pushButton1); });
+pushButton2.watch(function (err, value) { buttonWatch(err, value, pushButton2); });
 
 function unexportOnClose() { //function to run when exiting program
     LEDPin.writeSync(0); // Turn LED off
