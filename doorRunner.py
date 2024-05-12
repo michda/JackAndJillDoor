@@ -8,13 +8,23 @@ except RuntimeError:
 
 app = Flask(__name__)
 
+
+# pinmap
+# 6 relay 1
+# 13 relay 2
+# 19 led 1
+# 26 led 2
+# 20 button 1
+# 21 button 2
+
+
 GPIO.setmode(GPIO.BCM)
 locked = False
-# GPIO.setup(10, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+
 # the key of doors is the pin attached to the relay
 doors = {
-    13: {'name': 'GPIO 23', 'state': GPIO.LOW, 'led': 19, 'override': False},
-    24: {'name': 'GPIO 24', 'state': GPIO.LOW, 'led': 26, 'override': False}
+    6: {'name': 'GPIO 23', 'state': GPIO.LOW, 'led': 19, 'override': False},
+    13: {'name': 'GPIO 24', 'state': GPIO.LOW, 'led': 26, 'override': False}
 }
 
 buttons = {
@@ -39,6 +49,7 @@ def getDoorState(pin):
 @app.route('/state')
 def state():
     print("getting state")
+    return doors
 
 
 @app.route('/override/<door>')
