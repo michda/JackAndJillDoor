@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from gevent.pywsgi import WSGIServer
 import atexit
 try:
@@ -23,53 +23,64 @@ locked = False
 
 # the key of doors is the pin attached to the relay
 doors = {
-    6: {'name': 'GPIO 23', 'state': GPIO.LOW, 'led': 19, 'override': False},
-    13: {'name': 'GPIO 24', 'state': GPIO.LOW, 'led': 26, 'override': False}
+    19: {'name': 'GPIO 19', 'state': GPIO.LOW, 'led': 20, 'override': False},
+    13: {'name': 'GPIO 13', 'state': GPIO.LOW, 'led': 26, 'override': False}
 }
 
 buttons = {
-    20: {'name': 'button1'},
-    21: {'name': 'button2'}
+    16: {'name': 'button1'},
+    12: {'name': 'button2'}
 }
 
 for pin in doors:
+    print("setting door" + str(pin))
     GPIO.setup(pin, GPIO.OUT)
-    GPIO.output(pin, GPIO.HIGH)
+    GPIO.output(pin, GPIO.LOW)
     ledPin = doors[pin]['led']
     GPIO.setup(ledPin, GPIO.OUT)
     GPIO.output(ledPin, GPIO.LOW)
 
 
 def getDoorState(pin):
-    print("getting door state")
+    """Return the current state of the door relay pin."""
+    print("getting door state" + str(pin))
     state = GPIO.input(pin)
     return state
 
 
 @app.route('/state')
 def state():
+    """Return the current state of all doors as JSON."""
     print("getting state")
-    return doors
+    return jsonify(doors)
 
 
 @app.route('/override/<door>')
 def override(door):
-    print("overriding door "+str(pin))
-    keys = list(doors)
-    print(keys)
-    doorPin = keys[int(door)]
-    doors[doorPin]['override'] = not doors[doorPin]['override']
-    return doors[doorPin]
+    """Toggle override for a specific door by index."""
+    try:
+        keys = list(doors)
+        door_idx = int(door)
+        if door_idx < 0 or door_idx >= len(keys):
+            return jsonify({'error': 'Invalid door index'}), 400
+        doorPin = keys[door_idx]
+        doors[doorPin]['override'] = not doors[doorPin]['override']
+        print(
+            f"Overriding door {doorPin}, new override state: {doors[doorPin]['override']}")
+        return jsonify(doors[doorPin])
+    except (ValueError, IndexError):
+        return jsonify({'error': 'Invalid door index'}), 400
 
 
 @app.route('/lock')
 def lock():
+    """Lock all doors that are not overridden."""
     print("locking")
     global locked
     locked = True
     for pin in doors:
         if not doors[pin]['override']:
-            GPIO.output(pin, GPIO.LOW)
+            GPIO.output(pin, GPIO.HIGH)
             doors[pin]['state'] = getDoorState(pin)
             ledPin = doors[pin]['led']
             GPIO.output(ledPin, GPIO.HIGH)
@@ -78,12 +89,13 @@ def lock():
 
 @app.route('/unlock')
 def unlock():
+    """Unlock all doors that are not overridden."""
     print("unlocking")
     global locked
     locked = False
     for pin in doors:
         if not doors[pin]['override']:
-            GPIO.output(pin, GPIO.HIGH)
+            GPIO.output(pin, GPIO.LOW)
             doors[pin]['state'] = getDoorState(pin)
             ledPin = doors[pin]['led']
             GPIO.output(ledPin, GPIO.LOW)
@@ -91,7 +103,8 @@ def unlock():
 
 
 def button_callback(pin):
-    print("Button was pushed!"+str(pin))
+    """Handle button press events to toggle lock state."""
+    print("Button was pushed!" + str(pin))
     global locked
     if locked:
         locked = False
@@ -107,7 +120,8 @@ for pin in buttons:
     print("setting buttons")
     GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     # Setup event on pin rising edge
-    GPIO.add_event_detect(pin, GPIO.RISING, callback=button_callback)
+    GPIO.add_event_detect(
+        pin, GPIO.RISING, callback=button_callback, bouncetime=80)
 
 if __name__ == '__main__':
     # Debug/Development
@@ -118,6 +132,7 @@ if __name__ == '__main__':
 
 
 def exit_handler():
+    """Clean up GPIO settings on exit."""
     GPIO.cleanup()
 
 
